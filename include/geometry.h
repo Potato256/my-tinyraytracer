@@ -5,15 +5,16 @@
 #include <vector>
 #include <cassert>
 #include <iostream>
-#include "geometry.h"
 #include "types.h"
+#include "material.h"
 
 struct Sphere {
     Vec3f center;
     float radius;
+    Material mat;
 
-    Sphere(const Vec3f &c, const float &r):
-        center(c), radius(r) {}
+    Sphere(const Vec3f &c, const float &r, const Material &m):
+        center(c), radius(r), mat(m) {}
     bool ray_intersact(const Vec3f &orig, const Vec3f &dir, float &t0) const {
         Vec3f L = center - orig;
         float tca = L*dir;

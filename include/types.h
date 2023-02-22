@@ -35,12 +35,18 @@ template <int32_t DIM, typename T> T operator*(
     for (int32_t i=0; i < DIM; ++i) {ret += lhs[i]*rhs[i];};
     return ret;
 }
-template<int32_t DIM,typename T,typename U> vec<DIM,T> operator*(const vec<DIM,T> &lhs, const U& rhs) {
+template<int32_t DIM,typename T,typename U> vec<DIM,T> 
+operator*(const vec<DIM,T> &lhs, const U& rhs) {
     vec<DIM,T> ret;
     for (int32_t i=DIM; i--; ret[i]=lhs[i]*rhs);
     return ret;
 }
-
+template<int32_t DIM,typename T,typename U> vec<DIM,T> 
+operator*(const U& lhs, const vec<DIM,T> &rhs) {
+    vec<DIM,T> ret;
+    for (int32_t i=DIM; i--; ret[i]=rhs[i]*lhs);
+    return ret;
+}
 
 typedef vec<2, float> Vec2f;
 typedef vec<3, float> Vec3f;
