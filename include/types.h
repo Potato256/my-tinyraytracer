@@ -78,6 +78,15 @@ vec<DIM,T> operator/(const vec<DIM,T> &lhs, const U& rhs) {
     for (int32_t i=DIM; i--; ret[i]=lhs[i]/rhs);
     return ret;
 }
+
+template <int32_t DIM, typename T> 
+std::ostream& operator<<(std::ostream& out, const vec<DIM,T>& v) {
+    for(unsigned int i=0; i<DIM; i++) {
+        out << v[i] << " " ;
+    }
+    return out ;
+}
+
 typedef vec<2, float> Vec2f;
 typedef vec<3, float> Vec3f;
 typedef vec<3, float> Vec3i;
@@ -103,6 +112,12 @@ public:
     vec<3,T> & normalize(T l=1) { *this = (*this)*(l/norm()); return *this; }
     T x,y,z;
 };
+
+template <typename T> 
+vec<3,T> cross(vec<3,T> v1, vec<3,T> v2) {
+    return vec<3,T>(v1.y*v2.z - v1.z*v2.y, v1.z*v2.x - v1.x*v2.z, v1.x*v2.y - v1.y*v2.x);
+}
+
 
 template <typename T> class vec<4,T> {
 public:

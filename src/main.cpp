@@ -1,17 +1,53 @@
+#define _USE_MATH_DEFINES
 #include <limits>
 #include <cmath>
 #include <iostream>
 #include <fstream>
 #include <vector>
 #include <algorithm>
+
 #include "geometry.h"
 #include "types.h"
 #include "material.h"
 #include "light.h"
+#include "model.h"
+
+#define STB_IMAGE_WRITE_IMPLEMENTATION
+#include "stb_image_write.h"
+#define STB_IMAGE_IMPLEMENTATION
+#include "stb_image.h"
 
 #define AA
 #define AA4
 //#define AA16
+
+int envmap_width, envmap_height;
+std::vector<Vec3f> envmap;
+Model duck("../models/duck.obj");
+
+// I is toward the surface
+Vec3f reflect(const Vec3f &I, const Vec3f &N) {
+    return I - N*2.f*(I*N);
+}
+
+// I is toward the surface
+Vec3f refract(const Vec3f &I, const Vec3f &N, const float &refractive_index) { 
+    // Snell's law
+    float cosi = - std::clamp(I*N, -1.f, 1.f);
+    float etai = 1, etat = refractive_index;
+    Vec3f n = N;
+    if (cosi < 0) {
+    // if the ray is inside the object, 
+    // swap the indices and invert the normal to get the correct result
+    cosi = -cosi;
+        std::swap(etai, etat); n = -N;
+    }
+    float eta = etai / etat;
+    float k = 1 - eta*eta*(1 - cosi*cosi);
+    //return k < 0 ? Vec3f(0,0,0) : I*eta + n*(eta * cosi - sqrtf(k));
+    // consider total reflection
+    return k < 0 ? I - N*2.f*(I*n) : I*eta + n*(eta * cosi - sqrtf(k));
+}
 
 bool scene_intersect(
     const Vec3f &orig, 
@@ -38,7 +74,7 @@ bool scene_intersect(
     if(fabs(dir.y)>1e-3) {
         float d = -(orig.y+6)/dir.y; // y=-6
         Vec3f pt = orig + dir*d;
-        if (d>0 && fabs(pt.x)<15 && pt.z<-5 && pt.z>-35 && d<sphere_dist)
+        if (d>0 && fabs(pt.x)<12 && pt.z<-8 && pt.z>-32 && d<sphere_dist)
         {
             checkerboard_dist = d;
             hit = pt;
@@ -61,8 +97,16 @@ Vec3f cast_ray(
     Vec3f hit, normal;
     Material mat;
     if (depth>=4 || !scene_intersect(orig, dir, spheres, hit, normal, mat)) {
-        // background color
-        return Vec3f(0.2f, 0.7f, 0.8f);
+        // env light
+        float phi = 0;
+        float theta = 0;
+        Vec3f p = dir;
+        p.normalize();
+        phi = acos(p.y);
+        theta = atan2(p.z, p.x) + M_PI;
+        int i = std::clamp(int(phi/M_PI*envmap_height) % envmap_height, 0, envmap_height-1);
+        int j = std::clamp(int(theta/(2*M_PI)*envmap_width) % envmap_width, 0, envmap_width-1);
+        return envmap[i*envmap_width+j];
     }
     // "shader" program
     float diffuse_intensity = 0.0f;
@@ -183,21 +227,52 @@ void render(
 
     // For more file formats, it's recommended to use a third-party libary, 
     // like stb
-    std::ofstream ofs;
-    ofs.open("./out.ppm", std::ofstream::out | std::ofstream::binary);
-    ofs << "P6\n" << width << " " << height << "\n255\n";
+
+    std::vector<unsigned char> pixmap(width*height*3);
     for (int i = 0; i < height*width; ++i) {
-        for(int j = 0; j < 3; ++j) {
-            Vec3f &c = framebuffer[i];
-            float max = std::max(c[0], std::max(c[1], c[2]));
-            if (max>1) c = c*(1./max);
-            ofs << (uint8_t) (255 * std::clamp(framebuffer[i][j], 0.0f, 1.0f));
+        Vec3f &c = framebuffer[i];
+        float max = std::max(c[0], std::max(c[1], c[2]));
+        if (max>1) c = c*(1./max);
+        for (int j = 0; j < 3; j++) {
+            pixmap[i*3+j] = 
+                (unsigned char)(255 * std::clamp(framebuffer[i][j], 0.f, 1.f));
         }
     }
-    ofs.close();
+    stbi_write_jpg("out.jpg", width, height, 3, pixmap.data(), 100);
+
+    // std::ofstream ofs;
+    // ofs.open("./out.ppm", std::ofstream::out | std::ofstream::binary);
+    // ofs << "P6\n" << width << " " << height << "\n255\n";
+    // for (int i = 0; i < height*width; ++i) {
+    //     for(int j = 0; j < 3; ++j) {
+    //         Vec3f &c = framebuffer[i];
+    //         float max = std::max(c[0], std::max(c[1], c[2]));
+    //         if (max>1) c = c*(1./max);
+    //         ofs << (uint8_t) (255 * std::clamp(framebuffer[i][j], 0.0f, 1.0f));
+    //     }
+    // }
+    // ofs.close();
 }
 
 int main() {
+    int n = -1;
+    unsigned char *pixmap = stbi_load("../textures/envmap.jpg", &envmap_width, &envmap_height, &n, 0);
+    if (!pixmap || 3!=n) {
+        std::cerr << "Error: can not load the environment map" << std::endl;
+        return -1;
+    }
+    envmap = std::vector<Vec3f>(envmap_width*envmap_height);
+    for (int j = envmap_height-1; j>=0 ; j--) {
+        for (int i = 0; i<envmap_width; i++) {
+            envmap[i+j*envmap_width] = Vec3f(
+                pixmap[(i+j*envmap_width)*3+0], 
+                pixmap[(i+j*envmap_width)*3+1], 
+                pixmap[(i+j*envmap_width)*3+2]
+            )*(1/255.);
+        }
+    }
+    stbi_image_free(pixmap);
+
     std::vector<Sphere> spheres;
     Material      ivory(Vec4f(0.6,  0.3, 0.1, 0.0), Vec3f(0.4, 0.4, 0.3),   50. ,1.0);
     Material      glass(Vec4f(0.0,  0.5, 0.1, 0.8), Vec3f(0.6, 0.7, 0.8),  125. ,1.5);
