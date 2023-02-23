@@ -43,12 +43,12 @@ vec<DIM,T>& operator+=(vec<DIM, T>& lhs, const vec<DIM, T>& rhs) {
     for (int32_t i=0; i < DIM; ++i) {lhs[i]+=rhs[i];};
     return lhs;
 }
-// // operator += : v+=k
-// template <int32_t DIM, typename T> 
-// vec<DIM,T> operator+(vec<DIM, T> lhs, const vec<DIM, T>& rhs) {
-//     for (int32_t i=0; i < DIM; ++i) {lhs[i]+=rhs[i];};
-//     return lhs;
-// }
+// operator += : v+=k
+template <int32_t DIM, typename T, typename U> 
+vec<DIM,T>& operator+=(vec<DIM, T>& lhs, const U &rhs) {
+    for (int32_t i=0; i < DIM; ++i) {lhs[i]+=rhs;};
+    return lhs;
+}
 // operator * : v*v
 template <int32_t DIM, typename T> 
 T operator*(const vec<DIM, T> lhs, const vec<DIM, T>& rhs) {
@@ -104,5 +104,15 @@ public:
     T x,y,z;
 };
 
+template <typename T> class vec<4,T> {
+public:
+    vec() : x(T()), y(T()), z(T()), w(T()) {}
+    vec(T x_, T y_, T z_, T w_) : x(x_), y(y_), z(z_), w(w_) {}
+    T& operator[](const int32_t i) { assert(i>=0&&i<4); return i<=1 ? (i==0?x:y) : (i==2?z:w); }
+    const T& operator[](const int32_t i) const { assert(i>=0&&i<4); return i<=1 ? (i==0?x:y) : (i==2?z:w); }
+    float norm() { return std::sqrt(x*x+y*y+z*z+w*w); }
+    vec<3,T> & normalize(T l=1) { *this = (*this)*(l/norm()); return *this; }
+    T x,y,z,w;
+};
 
 #endif //__TYPES_H__

@@ -5,6 +5,7 @@
 #include <vector>
 #include <cassert>
 #include <iostream>
+#include <algorithm>
 #include "types.h"
 #include "material.h"
 
@@ -34,4 +35,22 @@ Vec3f reflect(const Vec3f &I, const Vec3f &N) {
     return I - N*2.f*(I*N);
 }
 
+// I is toward the surface
+Vec3f refract(const Vec3f &I, const Vec3f &N, const float &refractive_index) { 
+    // Snell's law
+    float cosi = - std::clamp(I*N, -1.f, 1.f);
+    float etai = 1, etat = refractive_index;
+    Vec3f n = N;
+    if (cosi < 0) {
+    // if the ray is inside the object, 
+    // swap the indices and invert the normal to get the correct result
+    cosi = -cosi;
+        std::swap(etai, etat); n = -N;
+    }
+    float eta = etai / etat;
+    float k = 1 - eta*eta*(1 - cosi*cosi);
+    //return k < 0 ? Vec3f(0,0,0) : I*eta + n*(eta * cosi - sqrtf(k));
+    // consider total reflection
+    return k < 0 ? I - N*2.f*(I*n) : I*eta + n*(eta * cosi - sqrtf(k));
+}
 #endif //__GEOMETRY_H__
