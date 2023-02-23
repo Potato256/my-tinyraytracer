@@ -49,17 +49,32 @@ Vec3f cast_ray(
     float specular_light_intensity = 0.0f;
     for (int i = 0; i < lights.size(); ++i) {
         Vec3f light_dir = lights[i].position - hit;
-        float light_d = std::max(0.1f, light_dir.norm());
+        // The back side will not be shaded
+        if (light_dir * normal < 0)
+            continue;
+        //std::cout<<"1\n";
+        float light_d = std::max(0.01f, light_dir.norm());
         float attenuate = 1; //1 / (light_d * light_d);
         //std::cout<<light_d<<std::endl;
         light_dir.normalize();
+        // shadow ray
+        Vec3f shadow_dir = light_dir;
+        Vec3f shadow_hit, shadow_normal;
+        Material shadow_mat;
+        if(scene_intersect(hit+0.001*normal, shadow_dir, spheres, 
+            shadow_hit, shadow_normal, shadow_mat)) {
+            if((shadow_hit-hit).norm() < light_d)
+                continue;
+        }
+        //std::cout<<"2\n";
+        // diffuse shading
         diffuse_light_intensity += 
-            lights[i].intensity * std::max(0.0f, light_dir * normal) * attenuate;
+            lights[i].intensity * light_dir * normal * attenuate;
         Vec3f half_vector = (light_dir + (-dir)) / 2.0f;
         half_vector.normalize();
-      
+        // specular shading
         specular_light_intensity +=
-            lights[i].intensity * powf(std::max(0.0f, half_vector * normal), 
+            lights[i].intensity * powf(half_vector * normal, 
                 mat.specular_exponent) * attenuate;
     }
     return mat.diffuse_color * diffuse_light_intensity * mat.albedo[0] +
