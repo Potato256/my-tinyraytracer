@@ -29,4 +29,9 @@ struct Sphere {
     }
 };
 
+// I is toward the surface
+Vec3f reflect(const Vec3f &I, const Vec3f &N) {
+    return I - N*2.f*(I*N);
+}
+
 #endif //__GEOMETRY_H__

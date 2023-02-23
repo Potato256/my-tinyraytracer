@@ -36,17 +36,18 @@ Vec3f cast_ray(
     const Vec3f &orig,
     const Vec3f &dir,
     const std::vector<Light> lights,
-    const std::vector<Sphere> spheres
+    const std::vector<Sphere> spheres,
+    int32_t depth=0
 ) {
     Vec3f hit, normal;
     Material mat;
-    if (!scene_intersect(orig, dir, spheres, hit, normal, mat)) {
+    if (depth>=5 || !scene_intersect(orig, dir, spheres, hit, normal, mat)) {
         // background color
         return Vec3f(0.2f, 0.7f, 0.8f);
     }
     // "shader" program
-    float diffuse_light_intensity = 0.0f;
-    float specular_light_intensity = 0.0f;
+    float diffuse_intensity = 0.0f;
+    float specular_intensity = 0.0f;
     for (int i = 0; i < lights.size(); ++i) {
         Vec3f light_dir = lights[i].position - hit;
         // The back side will not be shaded
@@ -68,17 +69,24 @@ Vec3f cast_ray(
         }
         //std::cout<<"2\n";
         // diffuse shading
-        diffuse_light_intensity += 
+        diffuse_intensity += 
             lights[i].intensity * light_dir * normal * attenuate;
         Vec3f half_vector = (light_dir + (-dir)) / 2.0f;
         half_vector.normalize();
         // specular shading
-        specular_light_intensity +=
+        specular_intensity +=
             lights[i].intensity * powf(half_vector * normal, 
                 mat.specular_exponent) * attenuate;
     }
-    return mat.diffuse_color * diffuse_light_intensity * mat.albedo[0] +
-           Vec3f(1.0f, 1.0f, 1.0f) * specular_light_intensity * mat.albedo[1];
+    // reflect shading
+    Vec3f reflect_orig = hit + 0.001 * normal;
+    Vec3f reflect_dir = reflect(dir, normal).normalize();
+    Vec3f reflect_intensity = cast_ray(reflect_orig, reflect_dir, 
+        lights, spheres, depth+1);
+    // sum up
+    return mat.diffuse_color * diffuse_intensity * mat.albedo[0] +
+           Vec3f(1.0f, 1.0f, 1.0f) * specular_intensity * mat.albedo[1] +
+           reflect_intensity * mat.albedo[2];
 }
 
 void render(
@@ -123,13 +131,15 @@ void render(
 
 int main() {
     std::vector<Sphere> spheres;
-    Material      ivory(Vec2f(0.6,  0.3), Vec3f(0.4, 0.4, 0.3),   50.f);
-    Material red_rubber(Vec2f(0.9,  0.1), Vec3f(0.3, 0.1, 0.1),   10.f);
+    Material      ivory(Vec3f(0.6,  0.3, 0.1), Vec3f(0.4, 0.4, 0.3),   50.);
+    Material red_rubber(Vec3f(0.9,  0.1, 0.0), Vec3f(0.3, 0.1, 0.1),   10.);
+    Material     mirror(Vec3f(0.0, 10.0, 0.8), Vec3f(1.0, 1.0, 1.0), 1425.);
 
     spheres.push_back(Sphere(Vec3f(-3,    0,   -16), 2,      ivory));
-    spheres.push_back(Sphere(Vec3f(-1.0, -1.5, -12), 2, red_rubber));
+    spheres.push_back(Sphere(Vec3f(-1.0, -1.5, -12), 2,      mirror));
     spheres.push_back(Sphere(Vec3f( 1.5, -0.5, -18), 3, red_rubber));
-    spheres.push_back(Sphere(Vec3f( 7,    5,   -18), 4,      ivory));
+    spheres.push_back(Sphere(Vec3f( 7,    5,   -18), 4,     mirror));
+    spheres.push_back(Sphere(Vec3f( 0,    8,   -20), 1,      ivory));
     
     std::vector<Light> lights;
     lights.push_back(Light(Vec3f(-10, 10,  10), 1.50));

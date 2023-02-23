@@ -6,10 +6,10 @@
 class Material {
 public:
     //Material(Vec3f &color): diffuse_color(color) {}
-    Material(const Vec2f &a, const Vec3f &color, const float &e): 
+    Material(const Vec3f &a, const Vec3f &color, const float &e): 
         albedo(a), diffuse_color(color), specular_exponent(e) {}
-    Material(): albedo(1, 0), diffuse_color(), specular_exponent() {}
-    Vec2f albedo;
+    Material(): albedo(1, 0, 0), diffuse_color(), specular_exponent() {}
+    Vec3f albedo;
     Vec3f diffuse_color;
     float specular_exponent;
 };
