@@ -13,7 +13,6 @@
 #define AA4
 //#define AA16
 
-
 bool scene_intersect(
     const Vec3f &orig, 
     const Vec3f &dir, 
@@ -34,7 +33,22 @@ bool scene_intersect(
             mat = spheres[i].mat;
         }
     }
-    return sphere_dist < 1000;
+
+    float checkerboard_dist = std::numeric_limits<float>::max();
+    if(fabs(dir.y)>1e-3) {
+        float d = -(orig.y+6)/dir.y; // y=-6
+        Vec3f pt = orig + dir*d;
+        if (d>0 && fabs(pt.x)<15 && pt.z<-5 && pt.z>-35 && d<sphere_dist)
+        {
+            checkerboard_dist = d;
+            hit = pt;
+            normal = Vec3f(0,1,0);
+            mat.diffuse_color = (int(.5*hit.x+1000) + int(.5*hit.z)) & 1 ?
+                Vec3f(1,1,1) : Vec3f(1, .7, .3);
+            mat.diffuse_color = mat.diffuse_color * .3;
+        }
+    }
+    return std::min(checkerboard_dist, sphere_dist) < 1000;
 }
 
 Vec3f cast_ray(
@@ -88,16 +102,22 @@ Vec3f cast_ray(
     }
 
     // reflect shading
-    Vec3f reflect_dir = reflect(dir, normal).normalize();
-    Vec3f reflect_orig = reflect_dir*normal>0 ? hit+normal*1e-3 : hit-normal*1e-3;
-    Vec3f reflect_intensity = cast_ray(reflect_orig, reflect_dir, 
-        lights, spheres, depth+1);
+    Vec3f reflect_intensity = Vec3f();
+    if (mat.albedo[2] > 1e-3) {
+        Vec3f reflect_dir = reflect(dir, normal).normalize();
+        Vec3f reflect_orig = reflect_dir*normal>0 ? hit+normal*1e-3 : hit-normal*1e-3;
+        reflect_intensity = cast_ray(reflect_orig, reflect_dir, 
+            lights, spheres, depth+1);
+    }
     
     // refract shading
-    Vec3f refract_dir = refract(dir, normal, mat.refract_index).normalize();
-    Vec3f refract_orig = refract_dir*normal>0 ? hit+normal*1e-3 : hit-normal*1e-3;
-    Vec3f refract_intensity = cast_ray(refract_orig, refract_dir, 
-        lights, spheres, depth+1);
+    Vec3f refract_intensity = Vec3f();
+    if (mat.albedo[3] > 1e-3) {
+        Vec3f refract_dir = refract(dir, normal, mat.refract_index).normalize();
+        Vec3f refract_orig = refract_dir*normal>0 ? hit+normal*1e-3 : hit-normal*1e-3;
+        refract_intensity = cast_ray(refract_orig, refract_dir, 
+            lights, spheres, depth+1);
+    }
 
     // sum up
     return mat.diffuse_color * diffuse_intensity * mat.albedo[0] +
@@ -119,6 +139,7 @@ void render(
 
     std::vector<Vec3f> framebuffer(width*height, Vec3f());
 #ifndef AA 
+#pragma omp parallel for
     for (int i = 0; i < height; ++i) {
         for (int j = 0; j < width; ++j) {
             float x = (2*(j+0.5)/width - 1) * tan(hfov/2) * 
@@ -132,6 +153,7 @@ void render(
     }
 #endif // AA
 #ifdef AA4
+#pragma omp parallel for
     for (int i = 0; i < 2*height; ++i) {
         for (int j = 0; j < 2*width; ++j) {
             float x = (2*(j+0.5)/(width*2) - 1) * tan(hfov/2) * 
@@ -145,6 +167,7 @@ void render(
     }
 #endif // AA4
 #ifdef AA16
+#pragma omp parallel for
     for (int i = 0; i < 4*height; ++i) {
         for (int j = 0; j < 4*width; ++j) {
             float x = (2*(j+0.5)/(width*4) - 1) * tan(hfov/2) * 
@@ -183,6 +206,7 @@ int main() {
 
     spheres.push_back(Sphere(Vec3f(-3,    0,   -16), 2,      ivory));
     spheres.push_back(Sphere(Vec3f(-1.0, -1.5, -12), 2,      glass));
+    spheres.push_back(Sphere(Vec3f(3.0, -1.5, -12), 0.5,      glass));
     spheres.push_back(Sphere(Vec3f( 1.5, -0.5, -18), 3, red_rubber));
     spheres.push_back(Sphere(Vec3f( 7,    5,   -18), 4,     mirror));
     spheres.push_back(Sphere(Vec3f( 0,    8,   -20), 1,      ivory));
