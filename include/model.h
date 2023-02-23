@@ -18,6 +18,7 @@ public:
 
     const Vec3f &point(int i) const;                   // coordinates of the vertex i
     Vec3f &point(int i);                   // coordinates of the vertex i
+    Vec3f &face_normal(int fi);            // get the normal of a face
     int vert(int fi, int li) const;              // index of the vertex for the triangle fi and local index li
     void get_bbox(Vec3f &min, Vec3f &max); // bounding box for all the vertices, including isolated ones
 };

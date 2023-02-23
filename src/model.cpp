@@ -93,6 +93,13 @@ int Model::vert(int fi, int li) const {
     assert(fi>=0 && fi<nfaces() && li>=0 && li<3);
     return faces[fi][li];
 }
+ 
+Vec3f& Model::face_normal(int fi) {
+    Vec3f edge1 = point(vert(fi,1)) - point(vert(fi,0));
+    Vec3f edge2 = point(vert(fi,2)) - point(vert(fi,0));
+    Vec3f normal = cross(edge1, edge2);
+    return normal.normalize();
+}
 
 std::ostream& operator<<(std::ostream& out, Model &m) {
     for (int i=0; i<m.nverts(); i++) {

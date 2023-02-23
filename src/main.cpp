@@ -19,7 +19,7 @@
 
 #define AA
 #define AA4
-//#define AA16
+// #define AA16
 
 int envmap_width, envmap_height;
 std::vector<Vec3f> envmap;
@@ -57,26 +57,26 @@ bool scene_intersect(
     Vec3f &normal,
     Material& mat
 ) {
-    float sphere_dist = std::numeric_limits<float>::max();
+    float closest_dist = std::numeric_limits<float>::max(); 
+    // spheres
     for (int i = 0; i < spheres.size(); ++i) {
         float L_dist = std::numeric_limits<float>::max();
         if (spheres[i].ray_intersact(orig, dir, L_dist) &&
-             L_dist < sphere_dist) {
+             L_dist < closest_dist) {
             //std::cout<<"hit\n";
-            sphere_dist = L_dist; 
-            hit = orig + dir * sphere_dist;
+            closest_dist = L_dist; 
+            hit = orig + dir * closest_dist;
             normal = (hit - spheres[i].center).normalize();
             mat = spheres[i].mat;
         }
     }
-
-    float checkerboard_dist = std::numeric_limits<float>::max();
+    // plane
     if(fabs(dir.y)>1e-3) {
         float d = -(orig.y+6)/dir.y; // y=-6
         Vec3f pt = orig + dir*d;
-        if (d>0 && fabs(pt.x)<12 && pt.z<-8 && pt.z>-32 && d<sphere_dist)
+        if (d>0 && fabs(pt.x)<12 && pt.z<-8 && pt.z>-32 && d<closest_dist)
         {
-            checkerboard_dist = d;
+            closest_dist = d;
             hit = pt;
             normal = Vec3f(0,1,0);
             mat.diffuse_color = (int(.5*hit.x+1000) + int(.5*hit.z)) & 1 ?
@@ -84,7 +84,22 @@ bool scene_intersect(
             mat.diffuse_color = mat.diffuse_color * .3;
         }
     }
-    return std::min(checkerboard_dist, sphere_dist) < 1000;
+    // model
+    int f_size = duck.nfaces();
+    for(int i = 0; i < f_size; ++i) {
+        float d = 0;
+        if(duck.ray_triangle_intersect(i, orig, dir, d) && d<closest_dist) {
+            closest_dist = d;
+            hit = orig + dir*d;
+            normal = duck.face_normal(i);
+            if (normal*dir > 0)
+                normal = -normal;
+            mat = Material(Vec4f(0.0,  0.5, 0.1, 0.8), Vec3f(0.6, 0.7, 0.8),  125. ,1.5);
+        }
+    }
+
+
+    return closest_dist < 1000;
 }
 
 Vec3f cast_ray(
@@ -175,7 +190,7 @@ void render(
     const std::vector<Sphere> &spheres
 ) {
     const int width     = 1024;
-    const int height    = 768;
+    const int height    = 728;
     Vec3f cam_pos = Vec3f(0.0f, 0.0f, 0.0f);
     Vec3f cam_view = Vec3f(0.0f, 0.0f, -1.0f);
     float cam_to_screen = 1.0f;
@@ -186,6 +201,9 @@ void render(
 #pragma omp parallel for
     for (int i = 0; i < height; ++i) {
         for (int j = 0; j < width; ++j) {
+            int sum_ij = i*width + j;
+            if(sum_ij%10000==0) 
+                std::cout<<(sum_ij)/(float)(height*width)<<std::endl;
             float x = (2*(j+0.5)/width - 1) * tan(hfov/2) * 
                 width/float(height);
             float y = -(2*(i+0.5)/height - 1) * tan(hfov/2);
@@ -200,6 +218,10 @@ void render(
 #pragma omp parallel for
     for (int i = 0; i < 2*height; ++i) {
         for (int j = 0; j < 2*width; ++j) {
+            int sum_ij = i*2*width + j;
+            if(sum_ij%10000==0) {
+                std::cout<<(sum_ij)/(float)(4*height*width)<<std::endl;
+            }
             float x = (2*(j+0.5)/(width*2) - 1) * tan(hfov/2) * 
                 width/float(height);
             float y = -(2*(i+0.5)/(height*2) - 1) * tan(hfov/2);
