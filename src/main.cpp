@@ -9,6 +9,11 @@
 #include "material.h"
 #include "light.h"
 
+#define AA
+#define AA4
+//#define AA16
+
+
 bool scene_intersect(
     const Vec3f &orig, 
     const Vec3f &dir, 
@@ -100,7 +105,8 @@ void render(
     float cam_to_screen = 1.0f;
     float hfov = M_PI/2.;
 
-    std::vector<Vec3f> framebuffer(width*height);
+    std::vector<Vec3f> framebuffer(width*height, Vec3f());
+#ifndef AA 
     for (int i = 0; i < height; ++i) {
         for (int j = 0; j < width; ++j) {
             float x = (2*(j+0.5)/width - 1) * tan(hfov/2) * 
@@ -108,10 +114,37 @@ void render(
             float y = -(2*(i+0.5)/height - 1) * tan(hfov/2);
             Vec3f dir = Vec3f(x, y, 0) + cam_view;
             dir.normalize();
-            framebuffer[i*width+j] = 
+            framebuffer[i*width+j] += 
                 cast_ray(cam_pos, dir, lights, spheres);
         }
     }
+#endif // AA
+#ifdef AA4
+    for (int i = 0; i < 2*height; ++i) {
+        for (int j = 0; j < 2*width; ++j) {
+            float x = (2*(j+0.5)/(width*2) - 1) * tan(hfov/2) * 
+                width/float(height);
+            float y = -(2*(i+0.5)/(height*2) - 1) * tan(hfov/2);
+            Vec3f dir = Vec3f(x, y, 0) + cam_view;
+            dir.normalize();
+            framebuffer[(i/2)*width+(j/2)] += 
+                cast_ray(cam_pos, dir, lights, spheres) / 4;
+        }
+    }
+#endif // AA4
+#ifdef AA16
+    for (int i = 0; i < 4*height; ++i) {
+        for (int j = 0; j < 4*width; ++j) {
+            float x = (2*(j+0.5)/(width*4) - 1) * tan(hfov/2) * 
+                width/float(height);
+            float y = -(2*(i+0.5)/(height*4) - 1) * tan(hfov/2);
+            Vec3f dir = Vec3f(x, y, 0) + cam_view;
+            dir.normalize();
+            framebuffer[(i/4)*width+(j/4)] += 
+                cast_ray(cam_pos, dir, lights, spheres) / 16;
+        }
+    }
+#endif // AA16
 
     // For more file formats, it's recommended to use a third-party libary, 
     // like stb

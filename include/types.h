@@ -37,6 +37,18 @@ vec<DIM,T> operator+(vec<DIM, T> lhs, const vec<DIM, T>& rhs) {
     for (int32_t i=0; i < DIM; ++i) {lhs[i]+=rhs[i];};
     return lhs;
 }
+// operator += : v+=v
+template <int32_t DIM, typename T> 
+vec<DIM,T>& operator+=(vec<DIM, T>& lhs, const vec<DIM, T>& rhs) {
+    for (int32_t i=0; i < DIM; ++i) {lhs[i]+=rhs[i];};
+    return lhs;
+}
+// // operator += : v+=k
+// template <int32_t DIM, typename T> 
+// vec<DIM,T> operator+(vec<DIM, T> lhs, const vec<DIM, T>& rhs) {
+//     for (int32_t i=0; i < DIM; ++i) {lhs[i]+=rhs[i];};
+//     return lhs;
+// }
 // operator * : v*v
 template <int32_t DIM, typename T> 
 T operator*(const vec<DIM, T> lhs, const vec<DIM, T>& rhs) {
