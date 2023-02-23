@@ -19,35 +19,53 @@ private:
     T data_[DIM];
 };
 
-template <int32_t DIM, typename T> vec<DIM,T> operator-(
-    vec<DIM, T> lhs, const vec<DIM, T>& rhs) {
+// operator - : v-v
+template <int32_t DIM, typename T> 
+vec<DIM,T> operator-(vec<DIM, T> lhs, const vec<DIM, T>& rhs) {
     for (int32_t i=0; i < DIM; ++i) {lhs[i]-=rhs[i];};
     return lhs;
 }
-template <int32_t DIM, typename T> vec<DIM,T> operator+(
-    vec<DIM, T> lhs, const vec<DIM, T>& rhs) {
+// operator - : -v
+template <int32_t DIM, typename T> 
+vec<DIM,T> operator-(vec<DIM, T> lhs) {
+    for (int32_t i=0; i < DIM; ++i) {lhs[i]=-lhs[i];};
+    return lhs;
+}
+// operator + : v+v
+template <int32_t DIM, typename T> 
+vec<DIM,T> operator+(vec<DIM, T> lhs, const vec<DIM, T>& rhs) {
     for (int32_t i=0; i < DIM; ++i) {lhs[i]+=rhs[i];};
     return lhs;
 }
-template <int32_t DIM, typename T> T operator*(
-    const vec<DIM, T> lhs, const vec<DIM, T>& rhs) {
+// operator * : v*v
+template <int32_t DIM, typename T> 
+T operator*(const vec<DIM, T> lhs, const vec<DIM, T>& rhs) {
     T ret = T();
     for (int32_t i=0; i < DIM; ++i) {ret += lhs[i]*rhs[i];};
     return ret;
 }
-template<int32_t DIM,typename T,typename U> vec<DIM,T> 
-operator*(const vec<DIM,T> &lhs, const U& rhs) {
+// operator * : v*k
+template<int32_t DIM,typename T,typename U> 
+vec<DIM,T> operator*(const vec<DIM,T> &lhs, const U& rhs) {
     vec<DIM,T> ret;
     for (int32_t i=DIM; i--; ret[i]=lhs[i]*rhs);
     return ret;
 }
-template<int32_t DIM,typename T,typename U> vec<DIM,T> 
-operator*(const U& lhs, const vec<DIM,T> &rhs) {
+// operator * : k*v
+template<int32_t DIM,typename T,typename U> 
+vec<DIM,T> operator*(const U& lhs, const vec<DIM,T> &rhs) {
     vec<DIM,T> ret;
     for (int32_t i=DIM; i--; ret[i]=rhs[i]*lhs);
     return ret;
 }
-
+// operator / : v/k
+template<int32_t DIM,typename T,typename U> 
+vec<DIM,T> operator/(const vec<DIM,T> &lhs, const U& rhs) {
+    assert(rhs!=0);
+    vec<DIM,T> ret;
+    for (int32_t i=DIM; i--; ret[i]=lhs[i]/rhs);
+    return ret;
+}
 typedef vec<2, float> Vec2f;
 typedef vec<3, float> Vec3f;
 typedef vec<3, float> Vec3i;
