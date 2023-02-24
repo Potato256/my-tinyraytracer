@@ -84,20 +84,19 @@ bool scene_intersect(
             mat.diffuse_color = mat.diffuse_color * .3;
         }
     }
-    // model
-    int f_size = duck.nfaces();
-    for(int i = 0; i < f_size; ++i) {
-        float d = 0;
-        if(duck.ray_triangle_intersect(i, orig, dir, d) && d<closest_dist) {
-            closest_dist = d;
-            hit = orig + dir*d;
-            normal = duck.face_normal(i);
-            if (normal*dir > 0)
-                normal = -normal;
-            mat = Material(Vec4f(0.0,  0.5, 0.1, 0.8), Vec3f(0.6, 0.7, 0.8),  125. ,1.5);
-        }
-    }
-
+    // // model
+    // int f_size = duck.nfaces();
+    // for(int i = 0; i < f_size; ++i) {
+    //     float d = 0;
+    //     if(duck.ray_triangle_intersect(i, orig, dir, d) && d<closest_dist) {
+    //         closest_dist = d;
+    //         hit = orig + dir*d;
+    //         normal = duck.face_normal(i);
+    //         if (normal*dir > 0)
+    //             normal = -normal;
+    //         mat = Material(Vec4f(0.0,  0.5, 0.1, 0.8), Vec3f(0.6, 0.7, 0.8),  125. ,1.5);
+    //     }
+    // }
 
     return closest_dist < 1000;
 }
@@ -126,6 +125,7 @@ Vec3f cast_ray(
     // "shader" program
     float diffuse_intensity = 0.0f;
     float specular_intensity = 0.0f;
+    Vec3f shadow_shading = Vec3f();
     for (int i = 0; i < lights.size(); ++i) {
         Vec3f light_dir = lights[i].position - hit;
 
@@ -138,16 +138,51 @@ Vec3f cast_ray(
         float attenuate = 1; //1 / (light_d * light_d);
         //std::cout<<light_d<<std::endl;
         light_dir.normalize();
+
         // shadow ray
+        // support caustic effects of point lights, not env light!
         Vec3f shadow_orig = normal*dir>0 ? hit-0.001*normal : hit+0.001*normal;
         Vec3f shadow_dir = light_dir;
         Vec3f shadow_hit, shadow_normal;
         Material shadow_mat;
         if(scene_intersect(hit+0.001*normal, shadow_dir, spheres, 
             shadow_hit, shadow_normal, shadow_mat)) {
-            if((shadow_hit-hit).norm() < light_d)
+            if (mat.albedo[2]>0.1 || mat.albedo[3]>0.1)
                 continue;
+            if((shadow_hit-hit).norm() < light_d) {
+                // reflect
+                if (shadow_mat.albedo[2] > 0.1 ) {
+                    Vec3f reflect_dir = 
+                        reflect(shadow_dir, shadow_normal).normalize();
+                    shadow_shading += cast_ray(
+                        reflect_dir*shadow_normal>0 ? 
+                            shadow_hit+shadow_normal*1e-3 : 
+                            shadow_hit-shadow_normal*1e-3,
+                        reflect_dir,
+                        lights,
+                        spheres,
+                        depth+1
+                    ) * shadow_mat.albedo[2];
+                }
+                // refract
+                if (shadow_mat.albedo[3] > 0.1 ) {
+                    Vec3f refract_dir = 
+                        refract(shadow_dir, shadow_normal, 
+                            shadow_mat.refract_index).normalize();
+                    shadow_shading += cast_ray(
+                        refract_dir*shadow_normal>0 ? 
+                            shadow_hit+shadow_normal*1e-3 : 
+                            shadow_hit-shadow_normal*1e-3,
+                        refract_dir,
+                        lights,
+                        spheres,
+                        depth+1
+                    ) * shadow_mat.albedo[3];
+                }
+            }
+            continue;
         }
+
         //std::cout<<"2\n";
         // diffuse shading
         diffuse_intensity += 
@@ -182,7 +217,8 @@ Vec3f cast_ray(
     return mat.diffuse_color * diffuse_intensity * mat.albedo[0] +
            Vec3f(1.0f, 1.0f, 1.0f) * specular_intensity * mat.albedo[1] +
            reflect_intensity * mat.albedo[2] +
-           refract_intensity * mat.albedo[3];
+           refract_intensity * mat.albedo[3] + 
+           shadow_shading * 0.5f;
 }
 
 void render(
@@ -219,7 +255,7 @@ void render(
     for (int i = 0; i < 2*height; ++i) {
         for (int j = 0; j < 2*width; ++j) {
             int sum_ij = i*2*width + j;
-            if(sum_ij%10000==0) {
+            if(sum_ij%100000==0) {
                 std::cout<<(sum_ij)/(float)(4*height*width)<<std::endl;
             }
             float x = (2*(j+0.5)/(width*2) - 1) * tan(hfov/2) * 
