@@ -147,39 +147,39 @@ Vec3f cast_ray(
         Material shadow_mat;
         if(scene_intersect(hit+0.001*normal, shadow_dir, spheres, 
             shadow_hit, shadow_normal, shadow_mat)) {
-            if (mat.albedo[2]>0.1 || mat.albedo[3]>0.1)
-                continue;
-            if((shadow_hit-hit).norm() < light_d) {
-                // reflect
-                if (shadow_mat.albedo[2] > 0.1 ) {
-                    Vec3f reflect_dir = 
-                        reflect(shadow_dir, shadow_normal).normalize();
-                    shadow_shading += cast_ray(
-                        reflect_dir*shadow_normal>0 ? 
-                            shadow_hit+shadow_normal*1e-3 : 
-                            shadow_hit-shadow_normal*1e-3,
-                        reflect_dir,
-                        lights,
-                        spheres,
-                        depth+1
-                    ) * shadow_mat.albedo[2];
-                }
-                // refract
-                if (shadow_mat.albedo[3] > 0.1 ) {
-                    Vec3f refract_dir = 
-                        refract(shadow_dir, shadow_normal, 
-                            shadow_mat.refract_index).normalize();
-                    shadow_shading += cast_ray(
-                        refract_dir*shadow_normal>0 ? 
-                            shadow_hit+shadow_normal*1e-3 : 
-                            shadow_hit-shadow_normal*1e-3,
-                        refract_dir,
-                        lights,
-                        spheres,
-                        depth+1
-                    ) * shadow_mat.albedo[3];
-                }
-            }
+            // if (mat.albedo[2]>0.1 || mat.albedo[3]>0.1)
+            //     continue;
+            // if((shadow_hit-hit).norm() < light_d) {
+            //     // reflect
+            //     if (shadow_mat.albedo[2] > 0.1 ) {
+            //         Vec3f reflect_dir = 
+            //             reflect(shadow_dir, shadow_normal).normalize();
+            //         shadow_shading += cast_ray(
+            //             reflect_dir*shadow_normal>0 ? 
+            //                 shadow_hit+shadow_normal*1e-3 : 
+            //                 shadow_hit-shadow_normal*1e-3,
+            //             reflect_dir,
+            //             lights,
+            //             spheres,
+            //             depth+1
+            //         ) * shadow_mat.albedo[2];
+            //     }
+            //     // refract
+            //     if (shadow_mat.albedo[3] > 0.1 ) {
+            //         Vec3f refract_dir = 
+            //             refract(shadow_dir, shadow_normal, 
+            //                 shadow_mat.refract_index).normalize();
+            //         shadow_shading += cast_ray(
+            //             refract_dir*shadow_normal>0 ? 
+            //                 shadow_hit+shadow_normal*1e-3 : 
+            //                 shadow_hit-shadow_normal*1e-3,
+            //             refract_dir,
+            //             lights,
+            //             spheres,
+            //             depth+1
+            //         ) * shadow_mat.albedo[3];
+            //     }
+            // }
             continue;
         }
 
